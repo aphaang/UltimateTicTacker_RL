@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym 
 from game.ultimatetictactoe import UltimateTicTacToe
 import numpy as np
 

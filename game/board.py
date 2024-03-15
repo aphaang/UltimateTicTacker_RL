@@ -528,7 +528,7 @@ class Board:
                 continuer = True
                 while continuer and (i<9):
                     if self.grid[9*large_index + i] == 0:
-                        continer = False
+                        continuer = False
                         self.possible.append(large_index)
                     i += 1
 
@@ -635,6 +635,7 @@ class Board:
         Output: list of moves (a move is represented as an int: 27 * ixLarge + 9* iyLarge + 3*ixSmall + iySmall)
         '''
         moves = []
+        print(self.possible)
         for large_index in self.possible:
             for i in range(9):
                 grid_index = 9*large_index + i

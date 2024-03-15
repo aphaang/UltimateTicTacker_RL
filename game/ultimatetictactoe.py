@@ -1,7 +1,7 @@
 from game.board import Board
 import pygame
 import numpy as np
-import gym
+import gymnasium as gym
 
 class UltimateTicTacToe:
 
