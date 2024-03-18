@@ -42,13 +42,18 @@ class QL_agent():
     
     def choose_action(self, grid, valid_actions):
         if np.random.random() > self.epsilon:
-            self.choose_best_action(self, grid, valid_actions)
+            action=self.choose_best_action(grid, valid_actions)
         else:
             action = np.random.choice(valid_actions)
         return action
     
     def choose_best_action(self, grid, valid_actions):
-        input = [(grid, a) for a in valid_actions]
+        #print(type(grid))
+        #print(type(valid_actions))
+        #for a in valid_actions:
+         #   print(grid.append(a))
+        input = [np.append(grid, a) for a in valid_actions]
+        #print(input)
         input = torch.tensor(input, dtype=torch.float32).to(self.nn.device)
         self.nn.zero_grad()
         actions = self.nn.forward(input)
@@ -56,6 +61,8 @@ class QL_agent():
         return actions
     
     def val_of_best_action(self,grid,valid_actions):
+        #print(grid)
+        #print(valid_actions)
         input = [np.append(grid, a) for a in valid_actions]
         input = torch.tensor(input, dtype=torch.float32).to(self.nn.device)
         self.nn.zero_grad()
@@ -77,19 +84,25 @@ class QL_agent():
 
         #attach best move to calculate q_val for new states
         new_valid_moves = [self.new_valid_moves_memory[n] for n in batch]
-        new_states = torch.tensor(self.new_state_memory[batch]).to(self.nn.device)
+        new_states = self.new_state_memory[batch]
         rewards = torch.tensor(self.reward_memory[batch]).to(self.nn.device)
         terminals = torch.tensor(self.terminal_memory[batch]).to(self.nn.device)
         actions = self.action_memory[batch]
-
+     
         batch_index = np.arange(self.batch_size)
         
         self.nn.train()
         q_eval = self.nn.forward(state_actions)
-        q_next =[self.val_of_best_action(new_state, valids) for (valids, new_state) in zip(new_valid_moves, self.new_state_memory[batch])]
-        #q_next[terminals] = 0.0
+        q_next=[]
+        for i in range(len(batch)):
+            if(terminals[i]):
+                q_next.append(rewards[i])
+            else:
+                q_next.append(self.val_of_best_action(new_states[i],new_valid_moves[i]))
+            
         
-        q_target = rewards + self.gamma * torch.max(q_next)
+        
+        q_target = rewards + torch.tensor(self.gamma).to(self.nn.device) * torch.tensor(q_next).to(self.nn.device)
         
         
         loss = self.nn.loss(q_eval, q_target)
