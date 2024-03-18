@@ -17,8 +17,9 @@ class QL_agent():
         self.eps_end = eps_end
         self.eps_dec = eps_dec
         self.mem_cntr = 0
+        self.counter=0;
         self.nn = NN(input_dims, fc1_dims=256, fc2_dims=256, output_dims=output_dims, lr=self.lr)
-
+        self.evalNN=copy.deepcopy(self.nn)
         self.state_memory = np.zeros((self.max_mem_size, input_dims-1), dtype=np.float32)
         self.state_action_memory = np.zeros((self.max_mem_size, input_dims))
         self.new_state_memory = np.zeros((self.max_mem_size, input_dims-1), dtype=np.float32)
@@ -45,6 +46,7 @@ class QL_agent():
             action=self.choose_best_action(grid, valid_actions)
         else:
             action = np.random.choice(valid_actions)
+        if(self.epsilon > self.eps_end): self.epsilon -= self.eps_dec
         return action
     
     def choose_best_action(self, grid, valid_actions):
@@ -55,9 +57,9 @@ class QL_agent():
         input = [np.append(grid, a) for a in valid_actions]
         #print(input)
         input = torch.tensor(input, dtype=torch.float32).to(self.nn.device)
-        self.nn.zero_grad()
-        actions = self.nn.forward(input)
-        actions = torch.argmax(actions).item()
+        with torch.no_grad():
+            actions = self.nn.forward(input)
+            actions = torch.argmax(actions).item()
         return actions
     
     def val_of_best_action(self,grid,valid_actions):
@@ -65,8 +67,7 @@ class QL_agent():
         #print(valid_actions)
         input = [np.append(grid, a) for a in valid_actions]
         input = torch.tensor(input, dtype=torch.float32).to(self.nn.device)
-        self.nn.zero_grad()
-        actions = self.nn.forward(input)
+        actions = self.evalNN.forward(input)
         return torch.max(actions).item()
     
     def learn(self):
@@ -91,8 +92,8 @@ class QL_agent():
      
         batch_index = np.arange(self.batch_size)
         
-        self.nn.train()
-        q_eval = self.nn.forward(state_actions)
+        self.nn.nn.train()
+        q_eval = self.nn.forward(state_actions).squeeze()
         q_next=[]
         for i in range(len(batch)):
             if(terminals[i]):
@@ -103,13 +104,18 @@ class QL_agent():
         
         
         q_target = rewards + torch.tensor(self.gamma).to(self.nn.device) * torch.tensor(q_next).to(self.nn.device)
-        
+        #print(q_target.shape)
+        #print(q_eval.shape)
         
         loss = self.nn.loss(q_eval, q_target)
         loss.backward()
         self.nn.optimizer.step()
+        self.nn.nn.eval()
+        self.counter+=1
+        if(self.counter%20==0):
+            self.evalNN=copy.deepcopy(self.nn)
 
-        if(self.epsilon > self.eps_end): self.epsilon -= self.eps_dec
+        
 
         
 
