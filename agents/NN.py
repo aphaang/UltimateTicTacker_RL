@@ -1,28 +1,34 @@
-from html.entities import name2codepoint
-
-import gym
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.optim import Adam
-from torch.nn import Linear, ReLU, Dropout, BatchNorm1d
+
 import os
 import tqdm
 
-class NN(nn.module):
-        def __init__(self):
+class NN(nn.Module):
+        def __init__(self, input_dims, fc1_dims, fc2_dims, output_dims=1, lr=0.001):
                 super(NN, self).__init__()
-                self.network = torch.nn.Sequential(
-                        torch.Linear(81+81, 256),
-                        torch.ReLU(inplace=True),
-                        torch.Linear(256, 256),
-                        torch.ReLU(inplace=True),
-                        torch.Linear(256, 81),
-                        torch.ReLU(inplace=True)
+                self.input_dims = input_dims
+                self.fc1_dims = fc1_dims
+                self.fc2_dims = fc2_dims
+                self.output_dims = output_dims
+                self.lr = lr
+                self.nn = nn.Sequential(
+                        nn.Linear(input_dims, fc1_dims),
+                        nn.ReLU(inplace=True),
+                        nn.Linear(fc1_dims, fc2_dims),
+                        nn.ReLU(inplace=True),
+                        nn.Linear(fc2_dims, output_dims)
                 )
+                self.optimizer = Adam(self.nn.parameters(), lr=self.lr)
+                self.loss = torch.nn.MSELoss()
+                self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                self.to(self.device)
 
 
 
-        def forward(self, curr_state, prev_move):
-                x = torch.tensor(curr_state+prev_move)
-                return self.network(x)
+        def forward(self, input):
+                x = torch.tensor(input)
+                return self.nn(x)
                 
