@@ -25,7 +25,7 @@ if __name__ == "__main__":
     epsilon=0.5   #abalation study
     lr=0.0001     #alation study
     env = TwoPlayerEnv() 
-    agentQ = QL_whole_board_agent(env, input_dims, output_dims, gamma, epsilon, lr, 128, 50)
+    agentQ = QL_agent(env, input_dims, output_dims, gamma, epsilon, lr, 128, 50)
     agent2 = RandomAgent()
     c=0
     c2=0
