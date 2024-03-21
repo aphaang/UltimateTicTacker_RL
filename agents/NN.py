@@ -29,6 +29,11 @@ class NN(nn.Module):
 
 
         def forward(self, input):
-                x = torch.tensor(input)
+                x = torch.tensor(input.float())
                 return self.nn(x)
                 
+        def save(self, name):
+                torch.save(self,os.path.dirname(__file__)+"/DQNetwork" + name + ".pt")
+
+        def load(self, name):
+                self = torch.load(os.path.dirname(__file__)+"/DQNetwork" + name + ".pt")

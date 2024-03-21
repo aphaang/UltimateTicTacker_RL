@@ -4,7 +4,7 @@ import torch
 import copy
 
 class QL_agent():
-    def __init__(self, env, input_dims, output_dims, gamma, epsilon, lr, batch_size, n_actions, max_mem_size=10000, 
+    def __init__(self, env, input_dims, output_dims, gamma, epsilon, lr, batch_size, n_actions, max_mem_size=1000, 
                  eps_end=0.01, eps_dec=5e-4):
         super(QL_agent, self).__init__()
         self.env = env
@@ -17,11 +17,11 @@ class QL_agent():
         self.eps_end = eps_end
         self.eps_dec = eps_dec
         self.mem_cntr = 0
-        self.counter=0;
-        self.nn = NN(input_dims, fc1_dims=256, fc2_dims=256, output_dims=output_dims, lr=self.lr)
+        self.counter=0
+        self.nn = NN(81*2, fc1_dims=256, fc2_dims=256, output_dims=output_dims, lr=self.lr)
         self.evalNN=copy.deepcopy(self.nn)
         self.state_memory = np.zeros((self.max_mem_size, input_dims-1), dtype=np.float32)
-        self.state_action_memory = np.zeros((self.max_mem_size, input_dims))
+        self.state_action_memory = np.zeros((self.max_mem_size, 81*2))
         self.new_state_memory = np.zeros((self.max_mem_size, input_dims-1), dtype=np.float32)
         self.new_valid_moves_memory = [0]*self.max_mem_size
 
@@ -31,13 +31,15 @@ class QL_agent():
 
     def remember_transition(self, state, action, reward, new_state, new_board, done):
         index = self.mem_cntr % self.max_mem_size
-        self.state_memory[index] = state
-        self.new_state_memory[index] = new_state
-        self.new_valid_moves_memory[index] = new_board.getListOfPossibleMoves()
+        self.state_memory[index] = copy.deepcopy(state)
+        self.new_state_memory[index] = copy.deepcopy(new_state)
+        self.new_valid_moves_memory[index] = copy.deepcopy(new_board.getListOfPossibleMoves())
         old_state=copy.deepcopy(state)
-        self.state_action_memory[index] = old_state.append(action)
-        self.reward_memory[index] = reward
-        self.action_memory[index] = action
+        one_hot= np.zeros(81)
+        one_hot[action]=1
+        self.state_action_memory[index] = np.append(old_state,one_hot)
+        self.reward_memory[index] = copy.deepcopy(reward)
+        self.action_memory[index] = copy.deepcopy(action)
         self.terminal_memory[index] = done
         self.mem_cntr += 1
     
@@ -46,7 +48,7 @@ class QL_agent():
             action=self.choose_best_action(grid, valid_actions)
         else:
             action = np.random.choice(valid_actions)
-        if(self.epsilon > self.eps_end): self.epsilon -= self.eps_dec
+        
         return action
     
     def choose_best_action(self, grid, valid_actions):
@@ -54,18 +56,29 @@ class QL_agent():
         #print(type(valid_actions))
         #for a in valid_actions:
          #   print(grid.append(a))
-        input = [np.append(grid, a) for a in valid_actions]
+        input=[]
+        for a in valid_actions:
+            one_hot= np.zeros(81)
+            one_hot[a]=1
+            input.append(np.append(grid,one_hot))
+        #input = [np.append(grid, np.zeros(81)) for a in valid_actions]
         #print(input)
         input = torch.tensor(input, dtype=torch.float32).to(self.nn.device)
         with torch.no_grad():
-            actions = self.nn.forward(input)
+            actions = self.nn.forward(input).squeeze()
+            #print(actions.shape)
             actions = torch.argmax(actions).item()
-        return actions
+        return valid_actions[actions]
     
     def val_of_best_action(self,grid,valid_actions):
         #print(grid)
         #print(valid_actions)
-        input = [np.append(grid, a) for a in valid_actions]
+        input=[]
+        for a in valid_actions:
+            one_hot= np.zeros(81)
+            one_hot[a]=1
+            input.append(np.append(grid,one_hot))        
+        #input = [np.append(grid, a) for a in valid_actions]
         input = torch.tensor(input, dtype=torch.float32).to(self.nn.device)
         actions = self.evalNN.forward(input)
         return torch.max(actions).item()
@@ -112,8 +125,19 @@ class QL_agent():
         self.nn.optimizer.step()
         self.nn.nn.eval()
         self.counter+=1
-        if(self.counter%20==0):
-            self.evalNN=copy.deepcopy(self.nn)
+        if(self.epsilon > self.eps_end): self.epsilon -= self.eps_dec
+        return loss
+    
+    def copy_eval_net(self):
+        self.evalNN=copy.deepcopy(self.nn)
+
+    def save_model(self, id=0):
+        self.evalNN.save("QL_agent_" + id)
+        
+    def load_model(self, id=0):
+        self.evalNN.load("QL_agent" + id)
+
+        
 
         
 

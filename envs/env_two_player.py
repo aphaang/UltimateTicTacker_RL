@@ -43,6 +43,20 @@ class TwoPlayerEnv(gym.Env):
     def getState(self):
         b = self.pygame.board
         return (b.grid.copy(), b.largeGrid.copy(), b.possible.copy(), b.currentPlayer, b.state)
+    
+    def get_board(self):
+        return self.pygame.board.grid.copy()
+    
+    def restoreFromGrid(self, grid, move, playerId):
+        b = self.pygame.board
+        b.grid = grid
+        b.largeGrid = [b.checkWinBoard(grid, i) for i in range(0, 72, 3)]
+        largeCellIndex = move / 9
+        ix = largeCellIndex % 3
+        iy = largeCellIndex / 3
+        b.possible = b.updatePossible(ix, iy)
+        b.currentPlayer = playerId
+        b.state = 0
 
     def restoreFromState(self, state):
         b = self.pygame.board
