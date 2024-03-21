@@ -19,8 +19,8 @@ class RandomAgent():
         return action
 
 if __name__ == "__main__":
-    input_dims=162
-    output_dims=81
+    input_dims=82
+    output_dims=1
     gamma=0.1   # possible for abaltion study
     epsilon=0.5   #abalation study
     lr=0.0001     #alation study

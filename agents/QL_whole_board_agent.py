@@ -15,7 +15,7 @@ In this case, state is a combination of the board and the valid moves available 
 def one_hot(valid_actions):
     actions = np.zeros(81)
     for v in valid_actions: 
-        actions[v] = 1
+        actions[int(v)] = 1
     return actions
 
 class QL_agent():
@@ -65,14 +65,14 @@ class QL_agent():
     
     def choose_action(self, grid, valid_actions):
         if np.random.random() > self.epsilon:
-            action=self.choose_best_action(grid, valid_actions)
+            action=self.choose_best_action(grid, one_hot(valid_actions))
         else:
             action = np.random.choice(valid_actions)
 
         return action
     
     def choose_best_action(self, grid, valid_actions):
-        input = np.append(grid, valid_actions)
+        input = np.append(grid, one_hot(valid_actions))
         input = torch.tensor(input, dtype=torch.float32).to(self.nn.device)
         with torch.no_grad():
             Q_vals = self.nn.forward(input)
@@ -98,13 +98,13 @@ class QL_agent():
         #collect data from indexes
         states = torch.tensor(self.state_memory[batch], dtype=torch.float).to(self.nn.device)
         actions = torch.tensor(self.action_memory[batch]).to(self.nn.device)
-        state_actions = torch.stack((states, actions), dim=1)
+        state_actions = torch.cat((states, actions), dim=1)
         
 
         #attach best move to calculate q_val for new states
         new_valid_moves = torch.tensor(self.new_valid_moves_memory[batch]).to(self.nn.device)
         new_states = torch.tensor(self.new_state_memory[batch]).to(self.nn.device)
-        new_states_actions = torch.stack((new_states, new_valid_moves), dim=1)
+        new_states_actions = torch.cat((new_states, new_valid_moves), dim=1)
 
         #isolate rewards
         rewards = torch.tensor(self.reward_memory[batch]).to(self.nn.device)
@@ -114,11 +114,11 @@ class QL_agent():
         self.nn.nn.train()
 
         #according to current NN, what is the highest q_val on the board? 
-        q_eval = torch.max(self.nn.forward(state_actions).squeeze())
+        q_eval = torch.max(self.nn.forward(state_actions))
 
         #according to the evalNN, what is the highest q_val for the resulting state? replace terminals with win/lose rewards. 
         q_next                = rewards
-        q_next[not terminals] = torch.max(self.evalNN.forward(new_states_actions))
+        q_next[torch.logical_not(terminals)] = torch.max(self.evalNN.forward(new_states_actions))
         q_target = rewards + torch.tensor(self.gamma).to(self.nn.device) * q_next
 
         #update our neural net
@@ -130,6 +130,7 @@ class QL_agent():
         if(self.counter%20==0):
             self.evalNN=copy.deepcopy(self.nn)
         if(self.epsilon > self.eps_end): self.epsilon -= self.eps_dec
+        return loss
 
     def copy_eval_net(self):
          self.evalNN=copy.deepcopy(self.nn)

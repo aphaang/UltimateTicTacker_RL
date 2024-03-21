@@ -1,6 +1,7 @@
 from envs.env_two_player import TwoPlayerEnv
 import random 
 from agents.QL_whole_board_agent import QL_agent
+import numpy as np 
 
 class RandomAgent():
 
@@ -40,8 +41,8 @@ if __name__ == "__main__":
     agent2 = RandomAgent()
     c=0
     c2=0
-    eval_epoch=100
-    total_epoch=200
+    eval_epoch=300
+    total_epoch=400
     for i in range(total_epoch):
         obs = env.reset()
         done = False
@@ -49,11 +50,9 @@ if __name__ == "__main__":
         loss=[]
         while not done:
             available = env.valid_actions()
-            #print(available)
             prev_board, _, _ = obs
             action = agentQ.choose_action(prev_board, available)
             
-
 
             obs, reward, done, _ = env.step(action)
             new_state, _, _ = obs
